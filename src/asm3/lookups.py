@@ -45,6 +45,7 @@ LOOKUP_TABLES = {
     "licencetype":      (_("License Types"), "LicenceTypeName", _("Type"), "LicenceTypeDescription", "add del ret cost", ("ownerlicence.LicenceTypeID",)),
     "logtype":          (_("Log Types"), "LogTypeName", _("Type"), "LogTypeDescription", "add del ret", ("log.LogTypeID",)),
     "lksmovementtype":  (_("Movement Types"), "MovementType", _("Type"), "", "", ("adoption.MovementType", "animal.ActiveMovementType",)),
+    "lksoutcome":       (_("Outcomes"), "Outcome", _("Outcome"), "", "", ""),
     "lkownerflags":     (_("Person Flags"), "Flag", _("Flag"), "", "add del", ""),
     "lksrotatype":      (_("Rota Types"), "RotaType", _("Type"), "", "", ("ownerrota.RotaTypeID",)),
     "lksex":            (_("Sexes"), "Sex", _("Sex"), "", "", ("animal.Sex", "animallost.Sex", "animalfound.Sex")),
@@ -98,6 +99,7 @@ MICROCHIP_MANUFACTURERS = [
     { "length": 10, "regex": r"^9A1", "name": "24PetWatch", "locales": "" }, 
     { "length": 15, "regex": r"^250", "name": "I-CAD", "locales": ""},
     { "length": 15, "regex": r"^360981", "name": "Novartis", "locales": "" },
+    { "length": 15, "regex": r"^5080941", "name": "Felixcan", "locales": "en_MZ" },
     { "length": 15, "regex": r"^578098", "name": "Kruuse Norge", "locales": "nb" },
     { "length": 15, "regex": r"^578077", "name": "AVID Friendchip Norway", "locales": "nb" },
     { "length": 15, "regex": r"^578094", "name": "AVID Friendchip Norway", "locales": "nb" },
@@ -183,6 +185,7 @@ MICROCHIP_MANUFACTURERS = [
     { "length": 15, "regex": r"^999", "name": "Transponder Test", "locales": ""}
 ]
 
+# Currency codes used by payment processors when accepting payments
 CURRENCIES = [
     { "CODE": "USD", "DISPLAY": "USD - United States Dollar"},
     { "CODE": "AUD", "DISPLAY": "AUD - Australian Dollar"},
@@ -1298,6 +1301,19 @@ def get_species(dbo):
 def get_species_name(dbo, sid):
     if id is None: return ""
     return dbo.query_string("SELECT SpeciesName FROM species WHERE ID = ?", [sid])
+
+def update_species_id(dbo, find, replace):
+    """ Changes all instances of speciesid from find to replace """
+    cols = [ "animal.SpeciesID", "animalcontrol.SpeciesID", "animalfiguresannual.SpeciesID",
+        "animallitter.SpeciesID", "animallostfoundmatch.LostSpeciesID", "animallostfoundmatch.FoundSpeciesID",
+        "animalwaitinglist.SpeciesID", "breed.SpeciesID", "onlineformfield.SpeciesID",
+        "animallost.AnimalTypeID", "animalfound.AnimalTypeID", "species.ID" ]
+    affected = 0
+    for c in cols:
+        table, col = c.split(".")
+        q = f"UPDATE {table} SET {col}={replace} WHERE {col}={find}"
+        affected += dbo.execute(q)
+    return affected
 
 def get_sizes(dbo):
     return dbo.query("SELECT * FROM lksize ORDER BY Size")

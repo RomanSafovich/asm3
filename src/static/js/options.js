@@ -183,6 +183,24 @@ $(function() {
         },
 
         render_accounts: function() {
+            const donmap = function(idx) {
+                return [
+                    '<tr>',
+                    '<td><label for="mapdt' + idx + '">' + _("Payments of type") + '</td>',
+                    '<td><select id="mapdt' + idx + '" data-idx="' + idx + '" class="asm-selectbox donmap">',
+                    '<option value="-1">' + _("[None]") + '</option>',
+                    html.list_to_options(controller.donationtypes, "ID", "DONATIONNAME"),
+                    '</select>',
+                    '</td>',
+                    '<td>' + _("are sent to") + '</td>',
+                    '<td><select id="mapac' + idx + '" class="asm-selectbox">',
+                    '<option value="-1">' + _("[None]") + '</option>',
+                    html.list_to_options(controller.accounts, "ID", "CODE"),
+                    '</select>',
+                    '</td>',
+                    '</tr>'
+                ].join("\n");
+            };
             return [
                 '<div id="tab-accounts">',
                 '<p><input data="rc:DisableAccounts" id="disableaccounts" type="checkbox" class="asm-checkbox" />',
@@ -256,76 +274,15 @@ $(function() {
                 '</select>',
                 '</td>',
                 '</tr>',
-                '<tr>',
-                '<td><label for="mapdt1">' + _("Payments of type") + '</td>',
-                '<td><select id="mapdt1" class="asm-selectbox donmap">',
-                '<option value="-1">' + _("[None]") + '</option>',
-                html.list_to_options(controller.donationtypes, "ID", "DONATIONNAME"),
-                '</select>',
-                '</td>',
-                '<td>' + _("are sent to") + '</td>',
-                '<td><select id="mapac1" class="asm-selectbox">',
-                '<option value="-1">' + _("[None]") + '</option>',
-                html.list_to_options(controller.accounts, "ID", "CODE"),
-                '</select>',
-                '</td>',
-                '</tr>',
-                '<tr>',
-                '<td><label for="mapdt2">' + _("Payments of type") + '</td>',
-                '<td><select id="mapdt2" class="asm-selectbox donmap">',
-                '<option value="-1">' + _("[None]") + '</option>',
-                html.list_to_options(controller.donationtypes, "ID", "DONATIONNAME"),
-                '</select>',
-                '</td>',
-                '<td>' + _("are sent to") + '</td>',
-                '<td><select id="mapac2" class="asm-selectbox">',
-                '<option value="-1">' + _("[None]") + '</option>',
-                html.list_to_options(controller.accounts, "ID", "CODE"),
-                '</select>',
-                '</td>',
-                '</tr>',
-                '<tr>',
-                '<td><label for="mapdt3">' + _("Payments of type") + '</td>',
-                '<td><select id="mapdt3" class="asm-selectbox donmap">',
-                '<option value="-1">' + _("[None]") + '</option>',
-                html.list_to_options(controller.donationtypes, "ID", "DONATIONNAME"),
-                '</select>',
-                '</td>',
-                '<td>' + _("are sent to") + '</td>',
-                '<td><select id="mapac3" class="asm-selectbox">',
-                '<option value="-1">' + _("[None]") + '</option>',
-                html.list_to_options(controller.accounts, "ID", "CODE"),
-                '</select>',
-                '</td>',
-                '</tr>',
-                '<tr>',
-                '<td><label for="mapdt4">' + _("Payments of type") + '</td>',
-                '<td><select id="mapdt4" class="asm-selectbox donmap">',
-                '<option value="-1">' + _("[None]") + '</option>',
-                html.list_to_options(controller.donationtypes, "ID", "DONATIONNAME"),
-                '</select>',
-                '</td>',
-                '<td>' + _("are sent to") + '</td>',
-                '<td><select id="mapac4" class="asm-selectbox">',
-                '<option value="-1">' + _("[None]") + '</option>',
-                html.list_to_options(controller.accounts, "ID", "CODE"),
-                '</select>',
-                '</td>',
-                '</tr>',
-                '<tr>',
-                '<td><label for="mapdt5">' + _("Payments of type") + '</td>',
-                '<td><select id="mapdt5" class="asm-selectbox donmap">',
-                '<option value="-1">' + _("[None]") + '</option>',
-                html.list_to_options(controller.donationtypes, "ID", "DONATIONNAME"),
-                '</select>',
-                '</td>',
-                '<td>' + _("are sent to") + '</td>',
-                '<td><select id="mapac5" class="asm-selectbox">',
-                '<option value="-1">' + _("[None]") + '</option>',
-                html.list_to_options(controller.accounts, "ID", "CODE"),
-                '</select>',
-                '</td>',
-                '</tr>',
+                donmap(1),
+                donmap(2),
+                donmap(3),
+                donmap(4),
+                donmap(5),
+                donmap(6),
+                donmap(7),
+                donmap(8),
+                donmap(9),
                 '</table>',
                 '</div>'
             ].join("\n");
@@ -521,6 +478,16 @@ $(function() {
                     128169, // Poop
                     128266, // Speaker with high volume
                     128272, // Lock with key
+                    128308, // Red circle
+                    128309, // Blue circle
+                    128993, // Yellow circle
+                    128994, // Green circle
+                    128995, // Purple circle
+                    128997, // Red square
+                    128998, // Blue square
+                    129000, // Yellow square
+                    129001, // Green square
+                    129002, // Purple square
                     128571, // Cat with heart eyes
                     129379, // Bowl and spoon
                     129387, // Can of food
@@ -705,6 +672,8 @@ $(function() {
                 '<input data="AnonymisePersonalData" id="anonymisepersonaldata" type="checkbox" class="asm-checkbox" /> <label for="anonymisepersonaldata">' + _("Anonymize personal data after this many years") + '</label>',
                 '<span id="callout-anonymise" class="asm-callout">' + _("This many years after creation of a person record, the name, address and telephone data will be anonymized.") + '</span>',
                 '<input data="AnonymiseAfterYears" type="text" class="asm-textbox asm-intbox" />', 
+                '<br />',
+                '<input data="rc:AnonymiseAdopters" id="anonymiseadopters" type="checkbox" class="asm-checkbox" /> <label for="anonymiseadopters">' + _("Never anonymize people who adopted an animal") + '</label>',
                 '<br />',
                 '<input data="AutoRemoveDocumentMedia" id="autoremovedocumentmedia" type="checkbox" class="asm-checkbox" /> <label for="autoremovedocumentmedia">' + _("Remove HTML and PDF document media after this many years") + '</label>',
                 '<input data="AutoRemoveDMYears" type="text" class="asm-textbox asm-intbox" />', 
@@ -1330,7 +1299,7 @@ $(function() {
                 '</table>',
                 '<p class="centered">',
                     _("In your PayPal account, enable Instant Payment Notifications with a URL of {0}")
-                    .replace("{0}", "<br/><b>" + asm.baseurl + "/pp_paypal" + "</b>"),
+                    .replace("{0}", "<br/><b>" + controller.pp_paypal + "</b>"),
                 '</p>',
                 '</div>',
 
@@ -1345,7 +1314,7 @@ $(function() {
                 '</table>',
                 '<p class="centered">',
                     _("In the Stripe dashboard, create a webhook to send 'checkout.session.completed' events to {0}")
-                    .replace("{0}", "<br/><b>" + asm.baseurl + "/pp_stripe" + "</b>"),
+                    .replace("{0}", "<br/><b>" + controller.pp_stripe + "</b>"),
                 '</p>',
                 '</div>',
 
@@ -1680,7 +1649,7 @@ $(function() {
                 let mappings = "";
                 $(".donmap").each(function() {
                     let t = $(this);
-                    let idx = t.attr("id").substring(5, 6);
+                    let idx = t.attr("data-idx");
                     if (t.val() != "" && t.val() != "0" && t.val() != "-1") {
                         if (mappings != "") { mappings += ","; }
                         mappings += t.val() + "=" + $("#mapac" + idx).val();

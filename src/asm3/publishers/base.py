@@ -372,7 +372,7 @@ def get_adoption_status(dbo, a):
     if a.ARCHIVED == 0 and a.HASACTIVERESERVE == 1: return asm3.i18n._("Reserved", l)
     if a.ARCHIVED == 0 and a.HASPERMANENTFOSTER == 1: return asm3.i18n._("Permanent Foster", l)
     if is_animal_adoptable(dbo, a): return asm3.i18n._("Adoptable", l)
-    return asm3.i18n._("Not for adoption", l)
+    return asm3.i18n._("Not available for adoption", l)
 
 def is_animal_adoptable(dbo, a):
     """
@@ -701,7 +701,7 @@ class AbstractPublisher(threading.Thread):
         Replace any $$Tag$$ tags in s, using animal a
         """
         tags = asm3.wordprocessor.animal_tags_publisher(self.dbo, a)
-        return asm3.wordprocessor.substitute_tags(s, tags, True, "$$", "$$")
+        return asm3.wordprocessor.substitute_tags(s, tags, True, "$$", "$$", crToBr = False)
 
     def resetPublisherProgress(self):
         """

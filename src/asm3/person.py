@@ -888,7 +888,7 @@ def insert_person_from_form(dbo, post, username, geocode=True):
         "IsVet":                    0,
         "IsGiftAid":                0,
         "IsSponsor":                0,
-        "AdditionalFlags":          ""
+        "AdditionalFlags":          "|"
     }, username, generateID=False)
 
     # If we're using GDPR contact options and email is not set, set the exclude from bulk email flag
@@ -1236,8 +1236,14 @@ def merge_person(dbo, username, personid, mergepersonid):
     reparent("diary", "LinkID", "LinkType", asm3.diary.PERSON)
     reparent("log", "LinkID", "LinkType", asm3.log.PERSON, haslastchanged=False)
               
-    # Change any additional field links pointing to the merge person
+    # Change any additional fields of type person on other records that point to the merge person
     asm3.additional.update_merge_person(dbo, mergepersonid, personid)
+
+    # Copy additional field values from mergeperson to person
+    asm3.additional.merge_values(dbo, username, mergepersonid, personid, "person")
+
+    # Delete the old additional field values from mergeperson
+    dbo.execute("DELETE FROM additional WHERE LinkID = %d AND LinkType IN (%s)" % (mergepersonid, asm3.additional.PERSON_IN))
 
     # Assign the adopter flag if we brought in new open adoption movements
     update_adopter_flag(dbo, username, personid)
@@ -1767,6 +1773,7 @@ def update_anonymise_personal_data(dbo, overrideretainyears = None):
     anonymised = _("No longer retained", l)
     enabled = asm3.configuration.anonymise_personal_data(dbo)
     retainyears = asm3.configuration.anonymise_after_years(dbo)
+    adopterclause = asm3.utils.iif( asm3.configuration.anonymise_adopters(dbo), '', 'AND IsAdopter=0' )
     if overrideretainyears:
         enabled = True
         retainyears = overrideretainyears
@@ -1780,7 +1787,7 @@ def update_anonymise_personal_data(dbo, overrideretainyears = None):
         "LastChangedDate = ?, LastChangedBy = ? " \
         "WHERE OwnerSurname <> ? AND CreatedDate <= ? " \
         "AND IsACO=0 AND IsAdoptionCoordinator=0 AND IsRetailer=0 AND IsHomeChecker=0 AND IsMember=0 " \
-        "AND IsShelter=0 AND IsFosterer=0 AND IsStaff=0 AND IsVet=0 AND IsVolunteer=0 " \
+        f"AND IsShelter=0 AND IsFosterer=0 AND IsStaff=0 AND IsVet=0 AND IsVolunteer=0 {adopterclause} " \
         "AND NOT EXISTS(SELECT ID FROM animal WHERE (OriginalOwnerID = owner.ID OR BroughtInByOwnerID = owner.ID) AND DateBroughtIn > ?) " \
         "AND NOT EXISTS(SELECT ID FROM clinicappointment WHERE OwnerID = owner.ID AND DateTime > ?) " \
         "AND NOT EXISTS(SELECT ID FROM ownerdonation WHERE OwnerID = owner.ID AND Date > ?) " \

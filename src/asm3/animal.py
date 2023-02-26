@@ -192,6 +192,26 @@ def get_animal_query(dbo):
             "ELSE " \
             "(SELECT LocationName FROM internallocation WHERE ID=a.ShelterLocation) " \
         "END AS DisplayLocationName, " \
+        "CASE WHEN a.DeceasedDate Is Not Null AND a.PutToSleep = 0 AND a.IsDOA = 0 THEN " \
+                "(SELECT Outcome FROM lksoutcome WHERE ID = 2) " \
+            "WHEN a.DeceasedDate Is Not Null AND a.IsDOA = 1 THEN " \
+                "(SELECT Outcome FROM lksoutcome WHERE ID = 3) " \
+            "WHEN a.DeceasedDate Is Not Null AND a.PutToSleep = 1 THEN " \
+                "(SELECT Outcome FROM lksoutcome WHERE ID = 4) " \
+            "WHEN a.ActiveMovementDate Is Not Null THEN " \
+                "(SELECT Outcome FROM lksoutcome WHERE ID = a.ActiveMovementType + 10) " \
+            "ELSE " \
+                "(SELECT Outcome FROM lksoutcome WHERE ID = 1) " \
+        "END AS OutcomeName, " \
+        "CASE WHEN a.DeceasedDate Is Not Null THEN a.DeceasedDate " \
+            "WHEN a.ActiveMovementDate Is Not Null THEN a.ActiveMovementDate " \
+            "ELSE Null " \
+        "END AS OutcomeDate, " \
+        "CASE WHEN a.DeceasedDate Is Not Null THEN " \
+                "(SELECT ReasonName FROM deathreason WHERE ID = a.PTSReasonID) " \
+            "WHEN a.ActiveMovementDate Is Not Null THEN co.OwnerName " \
+            "ELSE '' " \
+        "END AS OutcomeQualifier, " \
         "web.ID AS WebsiteMediaID, " \
         "web.MediaName AS WebsiteMediaName, " \
         "web.Date AS WebsiteMediaDate, " \
@@ -2426,7 +2446,7 @@ def insert_animal_from_form(dbo, post, username):
     # Only do it if this animal is a shelter animal or if the override is on to force
     # templates for non-shelter animals.
     if not post.boolean("nonshelter") or asm3.configuration.templates_for_nonshelter(dbo):
-        clone_from_template(dbo, username, nextid, dob, post.integer("animaltype"), post.integer("species"))
+        clone_from_template(dbo, username, nextid, datebroughtin, dob, post.integer("animaltype"), post.integer("species"))
 
     return (nextid, get_code(dbo, nextid))
 
@@ -3155,7 +3175,7 @@ def clone_animal(dbo, username, animalid):
     update_variable_animal_data(dbo, nid)
     return nid
 
-def clone_from_template(dbo, username, animalid, dob, animaltypeid, speciesid):
+def clone_from_template(dbo, username, animalid, datebroughtin, dob, animaltypeid, speciesid):
     """
     Tries to locate a non-shelter animal called "TemplateType" with animaltypeid,
     if it doesn't find one, it looks for a non-shelter animal called "TemplateSpecies"
@@ -3165,12 +3185,18 @@ def clone_from_template(dbo, username, animalid, dob, animaltypeid, speciesid):
     Clones appropriate medical, cost and diet info from the template animal.
     """
     babyqueries = [
+        "SELECT ID FROM animal WHERE NonShelterAnimal = 1 AND LOWER(AnimalName) LIKE 'templatetypebabydob' AND AnimalTypeID = %d" % animaltypeid,
+        "SELECT ID FROM animal WHERE NonShelterAnimal = 1 AND LOWER(AnimalName) LIKE 'templatespeciesbabydob' AND SpeciesID = %d" % speciesid,
         "SELECT ID FROM animal WHERE NonShelterAnimal = 1 AND LOWER(AnimalName) LIKE 'templatetypebaby' AND AnimalTypeID = %d" % animaltypeid,
         "SELECT ID FROM animal WHERE NonShelterAnimal = 1 AND LOWER(AnimalName) LIKE 'templatespeciesbaby' AND SpeciesID = %d" % speciesid,
+        "SELECT ID FROM animal WHERE NonShelterAnimal = 1 AND LOWER(AnimalName) LIKE 'templatetypedob' AND AnimalTypeID = %d" % animaltypeid,
+        "SELECT ID FROM animal WHERE NonShelterAnimal = 1 AND LOWER(AnimalName) LIKE 'templatespeciesdob' AND SpeciesID = %d" % speciesid,
         "SELECT ID FROM animal WHERE NonShelterAnimal = 1 AND LOWER(AnimalName) LIKE 'templatetype' AND AnimalTypeID = %d" % animaltypeid,
         "SELECT ID FROM animal WHERE NonShelterAnimal = 1 AND LOWER(AnimalName) LIKE 'templatespecies' AND SpeciesID = %d" % speciesid
     ]
     adultqueries = [ 
+        "SELECT ID FROM animal WHERE NonShelterAnimal = 1 AND LOWER(AnimalName) LIKE 'templatetypedob' AND AnimalTypeID = %d" % animaltypeid,
+        "SELECT ID FROM animal WHERE NonShelterAnimal = 1 AND LOWER(AnimalName) LIKE 'templatespeciesdob' AND SpeciesID = %d" % speciesid,
         "SELECT ID FROM animal WHERE NonShelterAnimal = 1 AND LOWER(AnimalName) LIKE 'templatetype' AND AnimalTypeID = %d" % animaltypeid,
         "SELECT ID FROM animal WHERE NonShelterAnimal = 1 AND LOWER(AnimalName) LIKE 'templatespecies' AND SpeciesID = %d" % speciesid
     ]
@@ -3190,10 +3216,15 @@ def clone_from_template(dbo, username, animalid, dob, animaltypeid, speciesid):
     if cloneanimalid == 0:
         return
     # Any animal fields that should be copied to the new record
-    copyfrom = dbo.first_row( dbo.query("SELECT IsNotAvailableForAdoption, IsNotForRegistration, IsHold, AdditionalFlags, " \
-        "DateBroughtIn, Fee, CurrentVetID, AnimalComments FROM animal WHERE ID = ?", [cloneanimalid]) )
-    broughtin = copyfrom.datebroughtin
-    newbroughtin = dbo.query_date("SELECT DateBroughtIn FROM animal WHERE ID = ?", [animalid])
+    copyfrom = dbo.first_row( dbo.query("SELECT AnimalName, IsNotAvailableForAdoption, IsNotForRegistration, IsHold, AdditionalFlags, " \
+        "DateBroughtIn, DateOfBirth, Fee, CurrentVetID, AnimalComments FROM animal WHERE ID = ?", [cloneanimalid]) )
+    # Use datebroughtin for calculating date offsets
+    templatedate = copyfrom.DATEBROUGHTIN
+    newrecorddate = datebroughtin
+    # Unless the selected template that we're using specified date of birth
+    if copyfrom.ANIMALNAME.lower().endswith("dob"):
+        templatedate = copyfrom.DATEOFBIRTH
+        newrecorddate = dob
     # Only set flags on the new record if they are set on the template - just copying them
     # meant that we were clearing defaults if they were set for not for adoption etc.
     if copyfrom.isnotavailableforadoption == 1: dbo.update("animal", animalid, { "IsNotAvailableForAdoption": 1 })
@@ -3205,14 +3236,17 @@ def clone_from_template(dbo, username, animalid, dob, animaltypeid, speciesid):
         "CurrentVetID":             copyfrom.currentvetid,
         "AnimalComments":           copyfrom.animalcomments
     }, username)
-    # Helper function to work out the difference between intake and a date and add that
-    # difference to today to get a new date
+    # Helper function to adjust the date on a template record when copying it to a new record.
+    # Does this by working out the offset in days between the dates on the template record and 
+    # applying that offset to the base date on the new record.
+    # Normally the template date and new record date are datebroughtin, but if
+    # this template is set to operate on DOB, then dateofbirth is used instead.
     def adjust_date(d):
-        dayoffset = date_diff_days(broughtin, d)
+        dayoffset = date_diff_days(templatedate, d)
         if dayoffset < 0:
-            adjdate = subtract_days(newbroughtin, dayoffset)
+            adjdate = subtract_days(newrecorddate, dayoffset)
         else:
-            adjdate = add_days(newbroughtin, dayoffset)
+            adjdate = add_days(newrecorddate, dayoffset)
         adjdate = adjdate.replace(hour=0, minute=0, second=0, microsecond=0) # throw away any time info that might have been on the original date
         return dbo.sql_date(adjdate)
     # Additional Fields (don't include newrecord ones or ones with default values as they are already set by the new animal screen)
@@ -3392,6 +3426,12 @@ def merge_animal(dbo, username, animalid, mergeanimalid):
 
     # Change any additional field links pointing to the merge animal
     asm3.additional.update_merge_person(dbo, mergeanimalid, animalid)
+
+    # Copy additional field values from mergeanimal to animal
+    asm3.additional.merge_values(dbo, username, mergeanimalid, animalid, "animal")
+
+    # Delete the old additional field values from mergeanimal
+    dbo.execute("DELETE FROM additional WHERE LinkID = %d AND LinkType IN (%s)" % (mergeanimalid, asm3.additional.ANIMAL_IN))
 
     # Reparent the audit records for the reparented records in the audit log
     # by switching ParentLinks to the new ID.
@@ -3591,6 +3631,33 @@ def update_animal_check_bonds(dbo, animalid):
     bond2 = bonds.bondedanimal2id
     if bond1 != 0: addbond(bond1, animalid)
     if bond2 != 0: addbond(bond2, animalid)
+
+def update_animal_breeds(dbo, breedid=0):
+    """
+    Regenerates the breedname field for all animals.
+    breedid: If non zero, only updates animals who have this breed
+    """
+    where = ""
+    if breedid > 0:
+        where = f"WHERE BreedID={breedid} OR Breed2ID={breedid}"
+    batch = []
+    animals = dbo.query(f"SELECT ID, BreedID, Breed2ID FROM animal {where}")
+    breeds = dbo.query("SELECT ID, BreedName FROM breed")
+    def bname(bid):
+        for b in breeds:
+            if b.ID == bid: return b.BREEDNAME
+        return "Invalid"
+    for a in animals:
+        if a.BREEDID == a.BREED2ID or a.BREED2ID == 0:
+            breedname = bname(a.BREEDID)
+        else:
+            breedname = "%s / %s" % ( bname(a.BREEDID), bname(a.BREED2ID) )
+        batch.append(( breedname, a.ID ))
+    dbo.execute_many("UPDATE animal SET " \
+        "BreedName = ? " \
+        "WHERE ID = ?", batch)
+    asm3.al.debug(f"breedid={breedid}: updated breeds for {len(batch)} animal records", "update_animal_breeds", dbo)
+    return "OK %d" % len(batch)
 
 def update_variable_animal_data(dbo, animalid, a = None, animalupdatebatch = None, bands = None, movements = None):
     """
@@ -5283,7 +5350,7 @@ def update_animal_figures_annual(dbo, year = 0):
     for at in alltypes:
         type_line("SELECT a.DateBroughtIn AS TheDate, a.DateOfBirth AS DOB, " \
             "COUNT(a.ID) AS Total FROM animal a WHERE " \
-            "a.SpeciesID = %d AND a.DateBroughtIn >= %s AND a.DateBroughtIn <= %s " \
+            "a.AnimalTypeID = %d AND a.DateBroughtIn >= %s AND a.DateBroughtIn <= %s " \
             "AND EXISTS(SELECT ID FROM animalvaccination WHERE AnimalID=a.ID AND DateOfVaccination Is Not Null) " \
             "AND a.NonShelterAnimal = 0 " \
             "GROUP BY a.DateBroughtIn, a.DateOfBirth" % (int(at["ID"]), firstofyear, lastofyear),

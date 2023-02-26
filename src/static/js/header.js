@@ -316,6 +316,10 @@ header = {
                 // If nothing is enabled, hide the whole financial menu
                 if (config.bool("DisableStockControl")) { $("#asm-menu-financial").hide(); }
             }
+            // Events
+            if (config.bool("DisableEvents")){
+                $(".tagevent").hide();
+            }
             // Stock Control
             if (config.bool("DisableStockControl")) {
                 $(".tagstock").hide();

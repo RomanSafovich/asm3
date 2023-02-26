@@ -788,6 +788,7 @@ def check_create_next_donation(dbo, username, odid):
             "Quantity":             d.QUANTITY,
             "UnitPrice":            d.UNITPRICE,
             "Donation":             d.DONATION,
+            "Fee":                  d.FEE,
             "IsGiftAid":            d.ISGIFTAID,
             "DonationPaymentID":    d.DONATIONPAYMENTID,
             "Frequency":            d.FREQUENCY,
@@ -873,7 +874,7 @@ def update_matching_cost_transaction(dbo, username, acid, destinationaccount = 0
     # Create the transaction
     tid = dbo.insert("accountstrx", {
         "TrxDate":          trxdate,
-        "Description":      c.DESCRIPTION,
+        "Description":      asm3.utils.truncate(c.DESCRIPTION, 128), # animalcost.Description is long, accountstrx.Description is short
         "Reconciled":       0,
         "Amount":           amount,
         "SourceAccountID":  source,
@@ -968,7 +969,7 @@ def update_matching_donation_transaction(dbo, username, odid, destinationaccount
     # Create the transaction
     tid = dbo.insert("accountstrx", {
         "TrxDate":              d.DATE,
-        "Description":          d.COMMENTS,
+        "Description":          asm3.utils.truncate(d.COMMENTS, 128), # ownerdonation.Comments is long, accountstrx.Description is short
         "Reconciled":           0,
         "Amount":               amount,
         "SourceAccountID":      source,

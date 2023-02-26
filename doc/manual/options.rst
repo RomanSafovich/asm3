@@ -359,6 +359,10 @@ policies instigated as part of data protection compliance.
 
 .. warning:: Once deleted, documents are gone forever and cannot be recovered.
 
+* Never anonymize people who adopted an animal: If this option is set, people
+  with the adopter flag are included in the list of people who won't be
+  anonymized.
+
 * Show GDPR Contact Opt-In field on person screens: If this option is on, the
   system will show a contact opt-in field on person records. You can use it to
   specify which forms of communication a person prefers. When saving the
@@ -862,8 +866,7 @@ It should not be necessary, but some users have reported problems receiving
 IPN notifications from PayPal. As a "just in case" measure, click on the Settings/Gear
 icon at the top right of your PayPal account, choose "Account Settings", then 
 "Notifications" and the "Update" link next to "Instant Payment Notifications".
-You can now choose a URL and to enable IPN messages. Use the URL shown on screen, 
-typically https://HOST/pp_paypal
+You can now choose a URL and to enable IPN messages. Use the URL shown on screen.
 
 Stripe
 ^^^^^^
@@ -878,7 +881,7 @@ Webhook needs to be created in the Stripe dashboard to receive
 Webhooks`
 
 The Payment Processors option tab in ASM will display the URL you need to
-configure for your webhook below the key fields, typically https://HOST/pp_stripe
+configure for your webhook below the key fields.
 
 Quicklinks
 ----------

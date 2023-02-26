@@ -2176,6 +2176,10 @@ class batch(JSONEndpoint):
         l = o.locale
         asm3.asynctask.function_task(o.dbo, _("Recalculate ALL animal ages/times", l), asm3.animal.update_all_variable_animal_data, o.dbo)
 
+    def post_genallbreeds(self, o):
+        l = o.locale
+        asm3.asynctask.function_task(o.dbo, _("Recalculate ALL animal breed names", l), asm3.animal.update_animal_breeds, o.dbo)
+
     def post_gendiarylinkinfo(self, o):
         l = o.locale
         asm3.asynctask.function_task(o.dbo, _("Regenerate diary link info for incomplete notes", l), asm3.diary.update_link_info_incomplete, o.dbo)
@@ -3271,6 +3275,55 @@ class event(JSONEndpoint):
         self.check(asm3.users.DELETE_EVENT)
         asm3.event.delete_event(o.dbo, o.user, o.post.integer("eventid"))
 
+class event_animals(JSONEndpoint):
+    url = "event_animals"
+    get_permissions = asm3.users.VIEW_EVENT_ANIMALS
+
+    def controller(self, o):
+        dbo = o.dbo
+        event_id = o.post.integer("id")
+        e = asm3.event.get_event(dbo, o.post.integer("id"))
+        if e is None: self.notfound()
+        queryfilter = o.post["filter"]
+        ea = asm3.event.get_animals_by_event(dbo, event_id, queryfilter)
+        asm3.al.debug("opened event animals %s" % event_id, "code.event_animals", dbo)
+        return{
+            "rows": ea,
+            "name": "event_animals",
+            "event": e,
+            "additional": asm3.additional.get_additional_fields(dbo, e["ID"], "event")
+        }
+
+    def post_create(self, o):
+        self.check(asm3.users.CHANGE_EVENT_ANIMALS)
+        asm3.event.insert_event_animal(o.dbo, o.user, o.post)
+
+    def post_createbulk(self, o):
+        self.check(asm3.users.CHANGE_EVENT_ANIMALS)
+        for animalid in o.post.integer_list("animals"):
+            o.post.data["animalid"] = str(animalid)
+            asm3.event.insert_event_animal(o.dbo, o.user, o.post)
+
+    def post_update(self, o):
+        self.check(asm3.users.CHANGE_EVENT_ANIMALS)
+        asm3.event.update_event_animal(o.dbo, o.user, o.post)
+
+    def post_delete(self, o):
+        self.check(asm3.users.CHANGE_EVENT_ANIMALS)
+        for eaid in o.post.integer_list("ids"):
+            asm3.event.delete_event_animal(o.dbo, o.user, eaid)
+
+    def post_arrived(self, o):
+        self.check(asm3.users.CHANGE_EVENT_ANIMALS)
+        for eaid in o.post.integer_list("ids"):
+            asm3.event.update_event_animal_arrived(o.dbo, o.user, eaid)
+
+    def post_endactivefoster(self, o):
+        self.check(asm3.users.CHANGE_EVENT_ANIMALS) # TODO: change permission check
+        for eaid in o.post.integer_list("ids"):
+            asm3.event.end_active_foster(o.dbo, o.user, eaid)
+
+
 class event_find(JSONEndpoint):
     url = "event_find"
     get_permissions = asm3.users.VIEW_EVENT
@@ -3529,7 +3582,9 @@ class htmltemplates_preview(ASMEndpoint):
 
     def content(self, o):
         template = o.post["template"].replace(",", "")
-        rows = asm3.animal.get_animals_ids(o.dbo, "DateBroughtIn", "SELECT ID FROM animal WHERE ID IN (%s)" % o.post["animals"], limit=10)
+        inclause = o.post["animals"]
+        if inclause == "": inclause = "0"
+        rows = asm3.animal.get_animals_ids(o.dbo, "DateBroughtIn", f"SELECT ID FROM animal WHERE ID IN ({inclause})", limit=10)
         asm3.additional.append_to_results(o.dbo, rows, "animal")
         self.content_type("text/html")
         self.cache_control(0)
@@ -4341,6 +4396,20 @@ class maint_sac_metrics(ASMEndpoint):
         except Exception as err:
             return str(err)
 
+class maint_switch_species(ASMEndpoint):
+    url = "maint_switch_species"
+
+    def content(self, o):
+        """ Swaps species id source to target """
+        find = o.post.integer("find")
+        replace = o.post.integer("replace")
+        if find == 0 or replace == 0:
+            raise asm3.utils.ASMValidationError("find and replace parameters must be supplied and valid")
+        affected = asm3.lookups.update_species_id(o.dbo, find, replace)
+        self.content_type("text/plain")
+        self.cache_control(0)
+        return f"{affected} rows affected."
+
 class maint_time(ASMEndpoint):
     url = "maint_time"
 
@@ -5078,6 +5147,11 @@ class options(JSONEndpoint):
 
     def controller(self, o):
         dbo = o.dbo
+        pp_paypal = "%s/pp_paypal" % BASE_URL
+        pp_stripe = "%s/pp_stripe" % BASE_URL
+        if asm3.smcom.active():
+            pp_paypal = asm3.smcom.get_payments_url()
+            pp_stripe = asm3.smcom.get_payments_url()
         c = {
             "accounts": asm3.financial.get_accounts(dbo, onlybank=True),
             "accountsexp": asm3.financial.get_accounts(dbo, onlyexpense=True),
@@ -5104,6 +5178,8 @@ class options(JSONEndpoint):
             "lostanimalfindcolumns": asm3.html.json_lostanimalfindcolumns(dbo),
             "paymentmethods": asm3.lookups.get_payment_methods(dbo),
             "personfindcolumns": asm3.html.json_personfindcolumns(dbo),
+            "pp_paypal": pp_paypal,
+            "pp_stripe": pp_stripe,
             "quicklinks": asm3.html.json_quicklinks(dbo),
             "reservationstatuses": asm3.lookups.get_reservation_statuses(dbo),
             "sizes": asm3.lookups.get_sizes(dbo),

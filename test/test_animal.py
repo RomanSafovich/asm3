@@ -193,7 +193,7 @@ class TestAnimal(unittest.TestCase):
         asm3.animal.delete_animal(base.get_dbo(), "test", nid)
 
     def test_clone_from_template(self):
-        asm3.animal.clone_from_template(base.get_dbo(), "test", self.nid, base.today(), 1, 1)
+        asm3.animal.clone_from_template(base.get_dbo(), "test", self.nid, base.today(), base.today(), 1, 1)
 
     def test_merge_animal(self):
         cid = asm3.animal.clone_animal(base.get_dbo(), "test", self.nid)
@@ -287,6 +287,9 @@ class TestAnimal(unittest.TestCase):
 
     def test_update_on_shelter_animal_statuses(self):
         asm3.animal.update_on_shelter_animal_statuses(base.get_dbo())
+
+    def test_update_animal_breeds(self):
+        asm3.animal.update_animal_breeds(base.get_dbo())
 
     def test_update_animal_check_bonds(self):
         asm3.animal.update_animal_check_bonds(base.get_dbo(), self.nid)
